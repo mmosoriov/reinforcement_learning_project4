@@ -41,7 +41,7 @@ util.VALIDATION_LISTS['reinforcement'] = [
 
 def question2():
     answer_discount = 0.9
-    answer_noise = 0.2
+    answer_noise = 0.01
     return answer_discount, answer_noise
 
 def question3a():
