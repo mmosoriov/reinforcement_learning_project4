@@ -77,7 +77,20 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def run_value_iteration(self):
         # Write value iteration code here
-        "*** YOUR CODE HERE ***"
+        R = self.mdp.get_reward
+
+        for k in range(0, self.iterations):
+            Val_k = self.values.copy()
+            for s in self.mdp.get_states():
+                maxVal = float('-inf')
+                for a in self.mdp.get_possible_actions(s):
+                    val = 0 
+                    for s_prime, prob in self.mdp.get_transition_states_and_probs(s, a):
+                        val += prob * (R(s, a, s_prime) + self.discount*Val_k[s_prime]) 
+                    maxVal = max(maxVal, val)
+                self.values[s] = maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
+                    
+        
 
 
     def get_value(self, state):
@@ -92,8 +105,17 @@ class ValueIterationAgent(ValueEstimationAgent):
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        R = self.mdp.get_reward
+        
+        bestQState = (float('-inf'), None, None)
+        for a in self.mdp.get_possible_actions(state):
+            val = 0
+            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
+                val += prob * (R(state, a, s_prime) + self.discount*self.values[s_prime])
+            bestQState = max(bestQState, (val, a, s_prime), key=lambda x: x[0])
+            print(bestQState)
+        return (bestQState[1], bestQState[2])
+        
 
     def compute_action_from_values(self, state):
         """
@@ -104,8 +126,18 @@ class ValueIterationAgent(ValueEstimationAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Given a state, the argmax of actions from that state
+        R = self.mdp.get_reward
+        
+        bestAction = (float('-inf'), None)
+        for a in self.mdp.get_possible_actions(state):
+            val = 0
+            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
+                val += prob * (R(state, a, s_prime) + self.discount*self.values[s_prime])
+            bestAction = max(bestAction, (val, a), key=lambda x: x[0])
+            print(bestAction)
+        return bestAction[1]
+        
 
     def get_policy(self, state):
         return self.compute_action_from_values(state)
