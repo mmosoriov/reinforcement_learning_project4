@@ -105,16 +105,13 @@ class ValueIterationAgent(ValueEstimationAgent):
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        R = self.mdp.get_reward
+        Reward = self.mdp.get_reward
         
-        bestQState = (float('-inf'), None, None)
-        for a in self.mdp.get_possible_actions(state):
-            val = 0
-            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
-                val += prob * (R(state, a, s_prime) + self.discount*self.values[s_prime])
-            bestQState = max(bestQState, (val, a, s_prime), key=lambda x: x[0])
-            print(bestQState)
-        return (bestQState[1], bestQState[2])
+        val = 0
+        for s_prime, prob in self.mdp.get_transition_states_and_probs(state, action):
+            val += prob * (Reward(state, action, s_prime) + self.discount*self.values[s_prime])
+            
+        return val
         
 
     def compute_action_from_values(self, state):
@@ -127,15 +124,14 @@ class ValueIterationAgent(ValueEstimationAgent):
           terminal state, you should return None.
         """
         # Given a state, the argmax of actions from that state
-        R = self.mdp.get_reward
+        Reward = self.mdp.get_reward
         
         bestAction = (float('-inf'), None)
         for a in self.mdp.get_possible_actions(state):
             val = 0
             for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
-                val += prob * (R(state, a, s_prime) + self.discount*self.values[s_prime])
+                val += prob * (Reward(state, a, s_prime) + self.discount*self.values[s_prime])
             bestAction = max(bestAction, (val, a), key=lambda x: x[0])
-            print(bestAction)
         return bestAction[1]
         
 
