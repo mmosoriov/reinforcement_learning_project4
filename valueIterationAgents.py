@@ -201,6 +201,28 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
         self.theta = theta
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
-    def run_value_iteration(self):
-        "*** YOUR CODE HERE ***"
 
+    def run_value_iteration(self):
+        predeccesors = self.compute_predecessors()
+        print(predeccesors)
+        pq = util.PriorityQueue()
+
+        for s in self.mdp.get_states():
+            pass
+
+    
+    def compute_predecessors(self):
+        predecessors = dict()
+
+        for state in self.mdp.get_states():
+            for action in self.mdp.get_possible_actions(state):
+                for s_prime, prob in self.mdp.get_transition_states_and_probs(state, action):
+                    if prob > 0:
+                        # state is a predecessor of s_prime if it has a non-zero chance to reach it
+                        pred = predecessors.get(s_prime)
+                        if pred is None:
+                            predecessors[s_prime] = set(state)
+                        else:
+                            predecessors[s_prime].add(state)
+
+        return predecessors
