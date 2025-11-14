@@ -82,9 +82,9 @@ class ValueIterationAgent(ValueEstimationAgent):
         for k in range(0, self.iterations):
             Val_k = self.values.copy()
             for s in self.mdp.get_states():
-                self.update_value(s, Val_k)
+                self.values[s] = self.bellman(s, Val_k)
                     
-    def update_value(self, state, Val_k):
+    def bellman(self, state, Val_k):
         Reward = self.mdp.get_reward
 
         maxVal = float('-inf')
@@ -93,7 +93,7 @@ class ValueIterationAgent(ValueEstimationAgent):
             for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
                 val += prob * (Reward(state, a, s_prime) + self.discount*Val_k[s_prime]) 
             maxVal = max(maxVal, val)
-        self.values[state] = maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
+        return maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
 
 
     def get_value(self, state):
@@ -180,7 +180,7 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
         num_states = len(states)
         for k in range(0, self.iterations):
             curState = states[k % num_states]
-            self.update_value(curState, self.values)
+            self.values[curState] = self.bellman(curState, self.values)
 
             
 
@@ -204,11 +204,27 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
 
     def run_value_iteration(self):
         predeccesors = self.compute_predecessors()
-        print(predeccesors)
         pq = util.PriorityQueue()
 
         for s in self.mdp.get_states():
-            pass
+            if self.mdp.is_terminal(s): continue
+            
+            # Highest q-value across all possible actions from s (what the value should be)
+            bestVal = self.bellman(s, self.values)
+            diff = abs(self.values[s] - bestVal)
+            pq.put(s, -diff)
+        
+        for i in range(0, self.iterations):
+            if pq.is_empty(): break
+
+            curState = pq.get()
+            if self.mdp.is_terminal(curState): continue
+            self.values[curState] = self.bellman(s, self.values)
+            for p in predeccesors[curState]:
+                diff = abs(self.values[p] - self.bellman(s, self.values))
+                if diff > self.theta:
+                    pq.set(p, -diff)
+
 
     
     def compute_predecessors(self):
