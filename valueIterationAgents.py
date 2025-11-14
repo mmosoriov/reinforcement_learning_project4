@@ -82,15 +82,18 @@ class ValueIterationAgent(ValueEstimationAgent):
         for k in range(0, self.iterations):
             Val_k = self.values.copy()
             for s in self.mdp.get_states():
-                maxVal = float('-inf')
-                for a in self.mdp.get_possible_actions(s):
-                    val = 0 
-                    for s_prime, prob in self.mdp.get_transition_states_and_probs(s, a):
-                        val += prob * (R(s, a, s_prime) + self.discount*Val_k[s_prime]) 
-                    maxVal = max(maxVal, val)
-                self.values[s] = maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
+                self.update_value(s, Val_k)
                     
-        
+    def update_value(self, state, Val_k):
+        Reward = self.mdp.get_reward
+
+        maxVal = float('-inf')
+        for a in self.mdp.get_possible_actions(state):
+            val = 0 
+            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
+                val += prob * (Reward(state, a, s_prime) + self.discount*Val_k[s_prime]) 
+            maxVal = max(maxVal, val)
+        self.values[state] = maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
 
 
     def get_value(self, state):
@@ -173,7 +176,13 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
     def run_value_iteration(self):
-        "*** YOUR CODE HERE ***"
+        states = self.mdp.get_states()
+        num_states = len(states)
+        for k in range(0, self.iterations):
+            curState = states[k % num_states]
+            self.update_value(curState, self.values)
+
+            
 
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """
