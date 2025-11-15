@@ -77,7 +77,23 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def run_value_iteration(self):
         # Write value iteration code here
-        "*** YOUR CODE HERE ***"
+        R = self.mdp.get_reward
+
+        for k in range(0, self.iterations):
+            Val_k = self.values.copy()
+            for s in self.mdp.get_states():
+                self.update_value(s, Val_k)
+                    
+    def update_value(self, state, Val_k):
+        Reward = self.mdp.get_reward
+
+        maxVal = float('-inf')
+        for a in self.mdp.get_possible_actions(state):
+            val = 0 
+            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
+                val += prob * (Reward(state, a, s_prime) + self.discount*Val_k[s_prime]) 
+            maxVal = max(maxVal, val)
+        self.values[state] = maxVal if maxVal != float('-inf') else 0 # Probably could have cleaner way
 
 
     def get_value(self, state):
@@ -92,8 +108,14 @@ class ValueIterationAgent(ValueEstimationAgent):
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        Reward = self.mdp.get_reward
+        
+        val = 0
+        for s_prime, prob in self.mdp.get_transition_states_and_probs(state, action):
+            val += prob * (Reward(state, action, s_prime) + self.discount*self.values[s_prime])
+            
+        return val
+        
 
     def compute_action_from_values(self, state):
         """
@@ -104,8 +126,17 @@ class ValueIterationAgent(ValueEstimationAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Given a state, the argmax of actions from that state
+        Reward = self.mdp.get_reward
+        
+        bestAction = (float('-inf'), None)
+        for a in self.mdp.get_possible_actions(state):
+            val = 0
+            for s_prime, prob in self.mdp.get_transition_states_and_probs(state, a):
+                val += prob * (Reward(state, a, s_prime) + self.discount*self.values[s_prime])
+            bestAction = max(bestAction, (val, a), key=lambda x: x[0])
+        return bestAction[1]
+        
 
     def get_policy(self, state):
         return self.compute_action_from_values(state)
@@ -145,7 +176,13 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
     def run_value_iteration(self):
-        "*** YOUR CODE HERE ***"
+        states = self.mdp.get_states()
+        num_states = len(states)
+        for k in range(0, self.iterations):
+            curState = states[k % num_states]
+            self.update_value(curState, self.values)
+
+            
 
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """
@@ -165,5 +202,94 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
     def run_value_iteration(self):
-        "*** YOUR CODE HERE ***"
+            # dictionary where key = state,  value = set_predecessors()
+            predecessors = self.compute_predecessors()
 
+            # Initialize an empty priority queue.
+            pq = util.PriorityQueue()
+
+            # For each non-terminal state s, (1) calculate diff and (2) push to PQ.
+            for s in self.mdp.get_states():
+                if self.mdp.is_terminal(s):
+                    continue
+                
+                # Find the highest Q-value of all possible actions from s
+                max_q = float('-inf') # initialize to -infinity
+                possible_actions = self.mdp.get_possible_actions(s)
+                if not possible_actions:
+                    max_q = 0.0 # States with no actions have value 0
+                else:
+                    for a in possible_actions:
+                        q_val = self.compute_q_value_from_values(s, a)
+                        max_q = max(max_q, q_val)
+                
+                # Find the absolute value of the difference (Bellman error) = |V(s) - max_a Q(s,a)|
+                diff = abs(self.values[s] - max_q)
+                
+                # Push s into the priority queue with priority -diff, this is because its a min heap and we
+                # are interested in the largest error(needs to be prioritized to be fixed)
+                pq.put(s, -diff)
+
+            # 4. For iteration in 0, 1, ..., self.iterations - 1
+            for i in range(self.iterations):
+                # If the priority queue is empty, then terminate.
+                if pq.is_empty():
+                    break
+                # Pop a state s off the priority queue.
+                s = pq.get()
+                # Update the value of s (if it is not a terminal state) in self.values.
+                if not self.mdp.is_terminal(s):
+                    max_q = float('-inf')
+                    possible_actions = self.mdp.get_possible_actions(s)
+                    if not possible_actions:
+                        self.values[s] = 0.0
+                    else:
+                        for a in possible_actions:
+                            q_val = self.compute_q_value_from_values(s, a)
+                            max_q = max(max_q, q_val)
+                        self.values[s] = max_q
+
+                # For each predecessor p of s, do:
+                for p in predecessors.get(s, set()):
+                    
+                    # Find the absolute value of the difference for p
+                    max_q_p = float('-inf')
+                    possible_actions_p = self.mdp.get_possible_actions(p)
+                    
+                    if not possible_actions_p:
+                        max_q_p = 0.0
+                    else:
+                        for a_p in possible_actions_p:
+                            q_val_p = self.compute_q_value_from_values(p, a_p)
+                            max_q_p = max(max_q_p, q_val_p)
+                    
+                    diff_p = abs(self.values[p] - max_q_p)
+
+                    # If diff_p > theta, push p in the priority queue
+                    if diff_p > self.theta:
+                        pq.set(p, -diff_p)
+
+
+        
+    def compute_predecessors(self):
+        """
+        Computes a dictionary mapping each state to a set of its predecessors.
+        A state 'p' is a predecessor of 's' if theres an action 'a' that moves from 'p' to 's'
+         in other words T(p, a, s) > 0
+        """
+        # Initialize a dictionary where key = state,  value = set_predecessors() empty at the beggining
+        predecessors = {}
+        for state in self.mdp.get_states():
+            predecessors[state] = set()
+
+        for state in self.mdp.get_states():
+            # terminal states can't be predecessors, therefore skip
+            if self.mdp.is_terminal(state):
+                continue
+                
+            for action in self.mdp.get_possible_actions(state):
+                for s_prime, prob in self.mdp.get_transition_states_and_probs(state, action):
+                    if prob > 0:
+                        # this state is a predecessor of 's_prime'
+                        predecessors[s_prime].add(state)
+        return predecessors
