@@ -172,14 +172,13 @@ class QLearningAgent(ReinforcementAgent):
         '''
         # Get the old belief Q_old(s,a)
         old_q_value = self.get_q_value(state, action)
-        
+
+        # value of next state = max_a' Q(s', a')
+        value_of_next_state = self.compute_value_from_q_values(next_state)
+
+
         # Calculate sample
         # sample = R(s,a,s') + Y max_a' Q(s', a')
-
-          # value of next state = max_a' Q(s', a')
-        value_of_next_state = self.compute_value_from_q_values(next_state)
-          # reward = R(s,a,s')
-          # self.discount = Y
         sample = reward + self.discount * value_of_next_state
         
         # Update Q_new(s,a)
