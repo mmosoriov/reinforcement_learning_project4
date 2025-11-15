@@ -141,8 +141,18 @@ class QLearningAgent(ReinforcementAgent):
         legal_actions = self.get_legal_actions(state)
         action = None
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
-
+        if not legal_actions:
+            return action
+        
+        epsilon = self.epsilon
+        # Simulate a binary variable, 
+        # returns true with a prob of epsilon
+        # returns false with a prob of 1-epsilon
+        binary_variable = util.flip_coin(epsilon)
+        if binary_variable:
+            action = random.choice(legal_actions)
+        else:
+            action = self.compute_action_from_q_values(state)
         return action
 
     def update(self, state, action, next_state, reward):
